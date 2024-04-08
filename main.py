@@ -5,8 +5,8 @@ app = Flask(__name__)
 api = Api(app)
 
 transactions = [
-    {"id": 1, "date": "2024-04-06", "amount": 100.0, "sender": "Dereck"},
-    {"id": 2, "date": "2024-04-06", "amount": 50.0, "sender": "Ashirafu"},
+    {"id": 1, "date": "2024-04-06", "amount": 100.0, "sender": "Dereck", "receiver": "Ashirafu"},
+    {"id": 2, "date": "2024-04-06", "amount": 50.0, "sender": "Ashirafu", "receiver": "Dereck"},
 ]
 
 class TransactionList(Resource):
@@ -39,8 +39,29 @@ class Transaction(Resource):
                 return jsonify({'message': 'Transaction deleted'})
         return jsonify({'error': 'Transaction not found'}), 404
 
+class SendMoney(Resource):
+    def post(self):
+        data = request.json
+        sender = data.get('sender')
+        receiver = data.get('receiver')
+        amount = data.get('amount')
+        if not sender or not receiver or not amount:
+            return {'error': 'Missing required fields'}, 400
+
+        # Create a new transaction
+        new_transaction = {
+            "id": len(transactions) + 1,
+            "date": "2024-04-08",
+            "amount": amount,
+            "sender": sender,
+            "receiver": receiver
+        }
+        transactions.append(new_transaction)
+        return new_transaction, 201
+
 api.add_resource(TransactionList, '/transactions')
 api.add_resource(Transaction, '/transactions/<int:transaction_id>')
+api.add_resource(SendMoney, '/send-money')
 
 if __name__ == '__main__':
     app.run(debug=True)
