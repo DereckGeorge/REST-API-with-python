@@ -17,6 +17,7 @@ class TransactionData(db.Model):
     amount = db.Column(db.Float, nullable=False)
     sender = db.Column(db.String(50), nullable=False)
     receiver = db.Column(db.String(50), nullable=False)
+    confirmed = db.Column(db.Boolean, default=False) 
 
     def serialize(self):
         return {
@@ -24,7 +25,8 @@ class TransactionData(db.Model):
             'date': self.date,
             'amount': self.amount,
             'sender': self.sender,
-            'receiver': self.receiver
+            'receiver': self.receiver,
+            'confirmed': self.confirmed  
         }
 
 # Define User model
@@ -45,7 +47,7 @@ class TransactionList(Resource):
     def get(self):
         transactions = TransactionData.query.all()
         transaction_list = [trans.serialize() for trans in transactions]
-        return jsonify(transaction_list)
+        return transaction_list
 
     def post(self):
         data = request.json
@@ -53,12 +55,12 @@ class TransactionList(Resource):
                                           sender=data['sender'], receiver=data['receiver'])
         db.session.add(new_transaction)
         db.session.commit()
-        return jsonify(new_transaction.serialize()), 201
+        return new_transaction.serialize(), 201
 
 class Transaction(Resource):
     def get(self, transaction_id):
         transaction = TransactionData.query.get_or_404(transaction_id)
-        return jsonify(transaction.serialize())
+        return transaction.serialize()
 
     def put(self, transaction_id):
         transaction = TransactionData.query.get_or_404(transaction_id)
@@ -66,13 +68,20 @@ class Transaction(Resource):
         for key, value in data.items():
             setattr(transaction, key, value)
         db.session.commit()
-        return jsonify(transaction.serialize())
+        return transaction.serialize()
 
     def delete(self, transaction_id):
         transaction = TransactionData.query.get_or_404(transaction_id)
         db.session.delete(transaction)
         db.session.commit()
         return '', 204
+
+class ConfirmTransaction(Resource): 
+    def put(self, transaction_id):
+        transaction = TransactionData.query.get_or_404(transaction_id)
+        transaction.confirmed = True  
+        db.session.commit()
+        return jsonify(transaction.serialize())
 
 class SendMoney(Resource):
     def post(self):
@@ -112,6 +121,7 @@ class SendMoney(Resource):
 
 api.add_resource(TransactionList, '/transactions')
 api.add_resource(Transaction, '/transactions/<int:transaction_id>')
+api.add_resource(ConfirmTransaction, '/transactions/<int:transaction_id>/confirm') 
 api.add_resource(SendMoney, '/send-money')
 
 if __name__ == '__main__':
