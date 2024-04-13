@@ -1,14 +1,18 @@
 from flask import Flask, jsonify, request
 from flask_restful import Resource, Api
 from flask_sqlalchemy import SQLAlchemy
-
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 app = Flask(__name__)
 api = Api(app)
 
-# Configure MySQL database connection
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/flaskApp'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+try:
+    # Configure MySQL database connection
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/flaskApp'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db = SQLAlchemy(app)
+
+except OperationalError as e:
+    print("Operational Error:", e)
 
 # Define Transaction model
 class TransactionData(db.Model):
@@ -45,10 +49,14 @@ class User(db.Model):
 # Resource classes
 class TransactionList(Resource):
     def get(self):
-        transactions = TransactionData.query.all()
-        transaction_list = [trans.serialize() for trans in transactions]
-        return transaction_list
-
+        try:
+            transactions = TransactionData.query.all()
+            transaction_list = [trans.serialize() for trans in transactions]
+            return transaction_list
+        
+        except SQLAlchemyError as e:
+            return {'error:''database error'}, 500
+        
     def post(self):
         data = request.json
         new_transaction = TransactionData(date=data['date'], amount=data['amount'],
